@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mirror Room - Test Suite</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            padding: 24px;
+        }
+        h1 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.4);
+            font-size: 12px;
+            margin-bottom: 24px;
+        }
+        #testOutput {
+            white-space: pre-wrap;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .suite-header {
+            color: #88aaff;
+            font-weight: bold;
+            margin-top: 16px;
+        }
+        .pass { color: #44dd88; }
+        .fail { color: #ff4466; }
+        .summary {
+            margin-top: 24px;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            font-size: 15px;
+        }
+        .summary.all-pass { border-color: #44dd88; color: #44dd88; }
+        .summary.has-fail { border-color: #ff4466; color: #ff4466; }
+
+        #visualTests {
+            margin-top: 32px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 24px;
+        }
+        #visualTests h2 {
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+        .visual-test-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+        .visual-test-row canvas {
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+        .visual-test-row .label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            min-width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mirror Room - Test Suite</h1>
+    <div class="subtitle">Core ray tracing engine validation * Project 1/2 math parity</div>
+    <div id="testOutput">Running tests...</div>
+
+    <div id="visualTests">
+        <h2>Visual Shader Tests</h2>
+        <div id="visualTestContainer"></div>
+    </div>
+
+    <script type="module">
+        import {
+            createVectorTests,
+            createRayPlaneTests,
+            createRayBoxTests,
+            createRaySphereTests,
+            createCameraRayTests,
+            createReflectionIntegrationTests,
+            createFogTests,
+            createSceneGeometryTests,
+            createCameraControllerTests,
+            createLightingTests,
+        } from './mathUtils.test.js';
+
+        const outputElement = document.getElementById('testOutput');
+        let outputHtml = '';
+
+        // Override console to capture output
+        const originalLog = console.log;
+        const originalError = console.error;
+
+        console.log = (...args) => {
+            const text = args.join(' ');
+            originalLog.apply(console, args);
+
+            if (text.includes('==')) {
+                outputHtml += `<div class="suite-header">${escapeHtml(text)}</div>`;
+            } else if (text.includes('')) {
+                outputHtml += `<div class="pass">${escapeHtml(text)}</div>`;
+            } else if (text.includes('Results:')) {
+                outputHtml += `<div style="margin-bottom:8px">${escapeHtml(text)}</div>`;
+            } else {
+                outputHtml += `<div>${escapeHtml(text)}</div>`;
+            }
+        };
+
+        console.error = (...args) => {
+            const text = args.join(' ');
+            originalError.apply(console, args);
+            outputHtml += `<div class="fail">${escapeHtml(text)}</div>`;
+        };
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        async function runAllTestSuites() {
+            const suites = [
+                createVectorTests(),
+                createRayPlaneTests(),
+                createRayBoxTests(),
+                createRaySphereTests(),
+                createCameraRayTests(),
+                createReflectionIntegrationTests(),
+                createFogTests(),
+                createSceneGeometryTests(),
+                createCameraControllerTests(),
+                createLightingTests(),
+            ];
+
+            let totalPassed = 0;
+            let totalFailed = 0;
+
+            for (const suite of suites) {
+                try {
+                    const result = await suite.runAll();
+                    totalPassed += result.passedCount;
+                    totalFailed += result.failedCount;
+                } catch (suiteError) {
+                    console.error(`Suite crashed: ${suiteError.message}`);
+                    totalFailed++;
+                }
+            }
+
+            // Summary
+            const allPassed = totalFailed === 0;
+            const summaryClass = allPassed ? 'all-pass' : 'has-fail';
+            const summaryText = allPassed
+                ? `ALL ${totalPassed} TESTS PASSED`
+                : `${totalPassed} passed, ${totalFailed} FAILED`;
+
+            outputHtml += `<div class="summary ${summaryClass}">${summaryText}</div>`;
+            outputElement.innerHTML = outputHtml;
+
+            // Run visual tests
+            runVisualTests();
+        }
+
+        // -- Visual Shader Tests -------------------------------------
+        // These render small canvases with the ray tracer to visually verify
+        // that the shader produces expected output patterns.
+
+        function runVisualTests() {
+            const container = document.getElementById('visualTestContainer');
+
+            // Test 1: Flat color room (no reflections)
+            addVisualTest(container, 'Single bounce - flat shaded room',
+                'Should show colored walls with no reflections (1 bounce).',
+                (canvas) => renderTestScene(canvas, { maxBounces: 1 }));
+
+            // Test 2: Full reflections
+            addVisualTest(container, '10 bounces - infinite mirror corridor',
+                'Should show recursive reflections fading into fog.',
+                (canvas) => renderTestScene(canvas, { maxBounces: 10 }));
+
+            // Test 3: Different camera angle
+            addVisualTest(container, 'Camera rotated 45 deg - diagonal view',
+                'Reflections should appear at an angle.',
+                (canvas) => renderTestScene(canvas, { maxBounces: 8, cameraYaw: 0.785 }));
+        }
+
+        function addVisualTest(container, title, description, renderFn) {
+            const row = document.createElement('div');
+            row.className = 'visual-test-row';
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 320;
+            canvas.height = 200;
+            row.appendChild(canvas);
+
+            const label = document.createElement('div');
+            label.className = 'label';
+            label.innerHTML = `<strong>${title}</strong><br>${description}`;
+            row.appendChild(label);
+
+            container.appendChild(row);
+
+            try {
+                renderFn(canvas);
+            } catch (renderError) {
+                label.innerHTML += `<br><span style="color:#ff4466">Render error: ${renderError.message}</span>`;
+            }
+        }
+
+        async function renderTestScene(canvas, options = {}) {
+            const gl = canvas.getContext('webgl2');
+            if (!gl) {
+                throw new Error('WebGL2 not available');
+            }
+
+            const maxBounces = options.maxBounces || 10;
+            const cameraYaw = options.cameraYaw || 0;
+
+            // Fetch and compile shaders
+            const vertSrc = await (await fetch('../shaders/raytrace.vert')).text();
+            const fragSrc = await (await fetch('../shaders/raytrace.frag')).text();
+
+            const { createShaderProgram } = await import('../src/shaderUtils.js');
+            const { SceneGeometry } = await import('../src/sceneGeometry.js');
+            const { LightingManager } = await import('../src/lightingManager.js');
+
+            const program = createShaderProgram(gl, vertSrc, fragSrc);
+
+            // Fullscreen quad
+            const quadVerts = new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]);
+            const vao = gl.createVertexArray();
+            gl.bindVertexArray(vao);
+            const buf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            gl.bufferData(gl.ARRAY_BUFFER, quadVerts, gl.STATIC_DRAW);
+            gl.enableVertexAttribArray(0);
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+            gl.useProgram(program);
+
+            // Camera
+            gl.uniform3fv(gl.getUniformLocation(program, 'cameraPosition'), [0, 1.6, 0]);
+            gl.uniform1f(gl.getUniformLocation(program, 'cameraYawAngle'), cameraYaw);
+            gl.uniform1f(gl.getUniformLocation(program, 'cameraPitchAngle'), 0);
+            gl.uniform2f(gl.getUniformLocation(program, 'canvasResolution'), canvas.width, canvas.height);
+            gl.uniform1f(gl.getUniformLocation(program, 'currentTimeSeconds'), 0);
+            gl.uniform1i(gl.getUniformLocation(program, 'maxBounceCount'), maxBounces);
+
+            // Scene
+            const scene = new SceneGeometry();
+            scene.uploadSceneUniforms(gl, program);
+
+            // Lights
+            const lights = new LightingManager();
+            lights.uploadLightUniforms(gl, program, [0, 1.6, 0]);
+
+            // Shatter state (none)
+            gl.uniform1iv(gl.getUniformLocation(program, 'isShatteredMirror'), new Int32Array(16));
+            gl.uniform1i(gl.getUniformLocation(program, 'voronoiSeedCount'), 0);
+
+            // Draw
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.clearColor(0, 0, 0, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+
+        runAllTestSuites();
+    </script>
+</body>
+</html>
