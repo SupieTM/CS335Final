@@ -175,9 +175,9 @@ export const MathUtils = {
      * Build a ray direction from pixel coordinates + camera orientation.
      * Same approach as Project 1's camera model ported to real-time.
      */
-    buildCameraRayDirection(pixelX, pixelY, canvasWidth, canvasHeight, cameraYawAngle, cameraPitchAngle) {
+    buildCameraRayDirection(pixelX, pixelY, canvasWidth, canvasHeight, cameraYawAngle, cameraPitchAngle, fieldOfViewRadians = Math.PI * 0.5) {
         const aspectRatioValue = canvasWidth / canvasHeight;
-        const fieldOfViewScale = Math.tan(Math.PI / 4.0); // 90 deg FOV
+        const fieldOfViewScale = Math.tan(fieldOfViewRadians / 2.0);
 
         // Normalized device coordinates
         const normalizedX = (2.0 * pixelX / canvasWidth - 1.0) * aspectRatioValue * fieldOfViewScale;

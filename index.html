@@ -263,7 +263,29 @@
             <label>Light 3</label>
             <input type="color" id="lightColor2" value="#3dff66">
         </div>
+        <div class="controlRow">
+            <label>Edit Light</label>
+            <input type="range" id="selectedLightSlider" min="0" max="4" value="0">
+            <span class="valueLabel" id="selectedLightLabel">1</span>
+        </div>
 
+    <div class="controlRow">
+        <label>Light X</label>
+        <input type="range" id="lightPosXSlider" min="-6" max="6" step="0.1" value="-1.7">
+        <span class="valueLabel" id="lightPosXLabel">-1.7</span>
+    </div>
+
+    <div class="controlRow">
+        <label>Light Y</label>
+        <input type="range" id="lightPosYSlider" min="0.5" max="4.0" step="0.1" value="2.6">
+        <span class="valueLabel" id="lightPosYLabel">2.6</span>
+    </div>
+
+    <div class="controlRow">
+        <label>Light Z</label>
+        <input type="range" id="lightPosZSlider" min="-8" max="8" step="0.1" value="-6">
+        <span class="valueLabel" id="lightPosZLabel">-6.0</span>
+    </div>
         <button id="resetMirrorsButton">REPAIR MIRRORS</button>
     </div>
 

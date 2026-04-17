@@ -216,12 +216,30 @@ export class CameraController {
         const rayDirection = MathUtils.buildCameraRayDirection(
             clickX, clickY,
             canvasWidth, canvasHeight,
-            this.cameraYawAngle, this.cameraPitchAngle
+            this.cameraYawAngle, this.cameraPitchAngle, this.fieldOfViewRadians
         );
         return {
             rayOrigin: new Float32Array(this.cameraPosition),
             rayDirection: rayDirection,
         };
+    }
+
+    resetForLayout(layoutName) {
+        const spawnTable = {
+            corridor: [0.0, 1.6, 0.0],
+            labyrinth: [0.0, 1.6, -7.0],
+            openRoom: [0.0, 1.6, 3.0],
+            angled: [0.0, 1.6, 0.0],
+        };
+        const spawn = spawnTable[layoutName] || [0.0, 1.6, 0.0];
+
+        this.cameraPosition[0] = spawn[0];
+        this.cameraPosition[1] = spawn[1];
+        this.cameraPosition[2] = spawn[2];
+
+        this.currentVelocity[0] = 0.0;
+        this.currentVelocity[1] = 0.0;
+        this.currentVelocity[2] = 0.0;
     }
 
     uploadCameraUniforms(glContext, shaderProgram) {

@@ -12,7 +12,7 @@ export class LightingManager {
         ];
 
         this.flashIntensityValue = 0.0;
-        this.flashDecayRate = 0.55;
+        this.flashDecayPerSecond = 36.0;
         this.flashLightColor = new Float32Array([1.0, 0.95, 0.8]);
         this.isFlashActive = false;
     }
@@ -25,7 +25,7 @@ export class LightingManager {
     updateFlash(deltaTimeSeconds) {
         if (!this.isFlashActive) return;
 
-        this.flashIntensityValue *= this.flashDecayRate;
+        Math.exp(-this.flashDecayPerSecond * deltaTimeSeconds);
         if (this.flashIntensityValue < 0.01) {
             this.flashIntensityValue = 0.0;
             this.isFlashActive = false;

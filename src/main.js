@@ -28,7 +28,7 @@ const frameTimeSamples = new Float32Array(frameTimeSampleCount);
 let frameTimeSampleIndex = 0;
 let frameTimeSamplesFilled = 0;
 
-let currentMaxBounceCount = 12;
+let currentMaxBounceCount = 10;
 
 async function initializeApplication() {
     renderCanvas = document.getElementById('renderCanvas');
@@ -74,6 +74,7 @@ async function initializeApplication() {
     sceneGeometry = new SceneGeometry();
     lightingManager = new LightingManager();
     shatterManager = new ShatterManager();
+    cameraController.resetForLayout(sceneGeometry.currentLayoutName);
 
     bloomPostProcessor = new BloomPostProcessor(glContext, renderCanvas.width, renderCanvas.height);
     try {
@@ -215,7 +216,9 @@ function setupUserInterface() {
     // room layout
     const roomLayoutSelector = document.getElementById('roomLayoutSelector');
     roomLayoutSelector.addEventListener('change', (e) => {
+        const layoutName = e.target.value;
         sceneGeometry.switchLayout(e.target.value);
+        cameraController.switchLayout(layoutName);
         shatterManager.resetAllMirrors();
         sceneGeometry.resetBrokenBoxes();
         shardParticleSystem.clearAllParticles();
@@ -306,6 +309,7 @@ function setupUserInterface() {
         }
         if (keyEvent.code === 'KeyR') {
             shatterManager.resetAllMirrors();
+            sceneGeometry.resetBrokenBoxes();
             shardParticleSystem.clearAllParticles();
         }
         if (keyEvent.code === 'Tab') {
