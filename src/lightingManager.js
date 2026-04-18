@@ -1,14 +1,12 @@
 export class LightingManager {
     constructor() {
-        // neon pillars running down the corridor. alternating pink / blue / green
-        // like the john wick hallway. intensities are baked into the color (ACES
-        // tonemap can eat the extra headroom without clipping).
+        // intensities baked into color - ACES tonemap absorbs the extra headroom
         this.pointLightArray = [
-            { positionVec3: new Float32Array([-1.7,  2.6, -6]),  colorVec3: new Float32Array([2.8, 0.35, 1.6]) },  // pink
-            { positionVec3: new Float32Array([ 1.7,  2.6, -3]),  colorVec3: new Float32Array([0.3, 0.9, 2.6]) },   // electric blue
-            { positionVec3: new Float32Array([-1.7,  2.6,  0]),  colorVec3: new Float32Array([0.35, 2.5, 0.7]) },  // neon green
-            { positionVec3: new Float32Array([ 1.7,  2.6,  3]),  colorVec3: new Float32Array([2.8, 0.35, 1.6]) },  // pink
-            { positionVec3: new Float32Array([-1.7,  2.6,  6]),  colorVec3: new Float32Array([0.3, 0.9, 2.6]) },   // blue
+            { positionVec3: new Float32Array([-1.7,  2.6, -6]),  colorVec3: new Float32Array([2.8, 0.35, 1.6]) },
+            { positionVec3: new Float32Array([ 1.7,  2.6, -3]),  colorVec3: new Float32Array([0.3, 0.9, 2.6]) },
+            { positionVec3: new Float32Array([-1.7,  2.6,  0]),  colorVec3: new Float32Array([0.35, 2.5, 0.7]) },
+            { positionVec3: new Float32Array([ 1.7,  2.6,  3]),  colorVec3: new Float32Array([2.8, 0.35, 1.6]) },
+            { positionVec3: new Float32Array([-1.7,  2.6,  6]),  colorVec3: new Float32Array([0.3, 0.9, 2.6]) },
         ];
 
         this.flashIntensityValue = 0.0;
@@ -18,7 +16,7 @@ export class LightingManager {
     }
 
     triggerMuzzleFlash() {
-        this.flashIntensityValue = 3.0; // bright initial burst
+        this.flashIntensityValue = 3.0;
         this.isFlashActive = true;
     }
 
@@ -53,7 +51,6 @@ export class LightingManager {
         const lightColorData = new Float32Array(8 * 3);
         let totalLightCount = this.pointLightArray.length;
 
-        // Upload scene lights
         for (let lightIdx = 0; lightIdx < this.pointLightArray.length; lightIdx++) {
             const light = this.pointLightArray[lightIdx];
             lightPositionData[lightIdx * 3 + 0] = light.positionVec3[0];
@@ -64,7 +61,6 @@ export class LightingManager {
             lightColorData[lightIdx * 3 + 2] = light.colorVec3[2];
         }
 
-        // Add flash light at camera position
         if (this.isFlashActive && totalLightCount < 8) {
             const flashIdx = totalLightCount;
             lightPositionData[flashIdx * 3 + 0] = cameraPosition[0];

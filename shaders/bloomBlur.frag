@@ -5,10 +5,9 @@ in vec2 fragmentScreenCoord;
 out vec4 finalFragmentColor;
 
 uniform sampler2D bloomSourceTexture;
-uniform vec2 blurDirection;  // (1,0) for horizontal, (0,1) for vertical
+uniform vec2 blurDirection;
 
-// 5-tap separable gaussian, symmetrical around the center sample.
-// weights from standard unit-variance gaussian, normalized.
+// 5-tap separable gaussian, normalized
 const float gaussianWeights[5] = float[](
     0.227027, 0.194596, 0.121622, 0.054054, 0.016216
 );

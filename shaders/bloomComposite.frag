@@ -9,7 +9,7 @@ uniform sampler2D bloomBlurredTexture;
 uniform float bloomStrengthMultiplier;
 uniform float vignetteStrength;
 
-// ACES filmic tonemap - keeps neon saturation instead of desaturating like Reinhard
+// ACES - keeps neon saturation; Reinhard desaturated the pinks too hard
 vec3 applyAcesTonemap(vec3 hdrColor) {
     vec3 scaledColor = hdrColor * 0.6;
     const float a = 2.51;
@@ -28,7 +28,6 @@ void main() {
     vec3 combinedColor = sceneColor + bloomColor * bloomStrengthMultiplier;
     combinedColor = applyAcesTonemap(combinedColor);
 
-    // radial vignette - darker at the edges for a filmic feel
     vec2 vignetteCoord = fragmentScreenCoord * 2.0 - 1.0;
     float vignetteFactor = 1.0 - dot(vignetteCoord, vignetteCoord) * vignetteStrength;
     combinedColor *= clamp(vignetteFactor, 0.0, 1.0);

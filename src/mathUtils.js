@@ -1,6 +1,4 @@
 export const MathUtils = {
-    // -- Vector3 operations ------------------------------------------
-
     createVector(xValue, yValue, zValue) {
         return new Float32Array([xValue, yValue, zValue]);
     },
@@ -52,18 +50,17 @@ export const MathUtils = {
     },
 
     normalizeVector(vector) {
-        const lengthValue = this.vectorLength(vector);
-        if (lengthValue < 1e-10) return new Float32Array([0, 0, 0]);
-        return this.scaleVector(vector, 1.0 / lengthValue);
+        const len = this.vectorLength(vector);
+        if (len < 1e-10) return new Float32Array([0, 0, 0]);
+        return this.scaleVector(vector, 1.0 / len);
     },
 
     reflectVector(incidentDirection, surfaceNormal) {
-        // Same reflection formula as Project 1: r = d - 2(d*n)n
-        const dotValue = this.dotProduct(incidentDirection, surfaceNormal);
+        const d = this.dotProduct(incidentDirection, surfaceNormal);
         return new Float32Array([
-            incidentDirection[0] - 2.0 * dotValue * surfaceNormal[0],
-            incidentDirection[1] - 2.0 * dotValue * surfaceNormal[1],
-            incidentDirection[2] - 2.0 * dotValue * surfaceNormal[2]
+            incidentDirection[0] - 2.0 * d * surfaceNormal[0],
+            incidentDirection[1] - 2.0 * d * surfaceNormal[1],
+            incidentDirection[2] - 2.0 * d * surfaceNormal[2]
         ]);
     },
 
@@ -77,136 +74,96 @@ export const MathUtils = {
                Math.abs(vectorA[2] - vectorB[2]) < toleranceEpsilon;
     },
 
-    // -- Ray-Geometry Intersection -----------------------------------
-    // Direct port of Project 1's intersection routines.
-
-    /**
-     * Ray-plane intersection.
-     * Plane defined by: dot(point, planeNormal) + planeDistance = 0
-     * Returns hitT or -1 if no intersection (parallel or behind).
-     */
     intersectRayPlane(rayOrigin, rayDirection, planeNormal, planeDistance) {
-        const denominatorValue = this.dotProduct(rayDirection, planeNormal);
-        if (Math.abs(denominatorValue) < 1e-8) return -1.0; // parallel
-        const hitT = -(this.dotProduct(rayOrigin, planeNormal) + planeDistance) / denominatorValue;
+        const denom = this.dotProduct(rayDirection, planeNormal);
+        if (Math.abs(denom) < 1e-8) return -1.0;
+        const hitT = -(this.dotProduct(rayOrigin, planeNormal) + planeDistance) / denom;
         return hitT > 0.001 ? hitT : -1.0;
     },
 
-    /**
-     * Ray-AABB intersection using the slab method (Project 1 style).
-     * boxCenter and boxHalfExtent define the box.
-     * Returns { hitT, hitNormal } or null.
-     */
     intersectRayBox(rayOrigin, rayDirection, boxCenter, boxHalfExtent) {
-        const boxMinCorner = this.subtractVectors(boxCenter, boxHalfExtent);
-        const boxMaxCorner = this.addVectors(boxCenter, boxHalfExtent);
+        const boxMin = this.subtractVectors(boxCenter, boxHalfExtent);
+        const boxMax = this.addVectors(boxCenter, boxHalfExtent);
 
-        let tEntryMax = -Infinity;
-        let tExitMin = Infinity;
-        let hitNormalAxis = -1;
-        let hitNormalSign = 1.0;
+        let tEntry = -Infinity;
+        let tExit = Infinity;
+        let normalAxis = -1;
+        let normalSign = 1.0;
 
-        for (let axisIndex = 0; axisIndex < 3; axisIndex++) {
-            if (Math.abs(rayDirection[axisIndex]) < 1e-8) {
-                // Ray parallel to slab
-                if (rayOrigin[axisIndex] < boxMinCorner[axisIndex] ||
-                    rayOrigin[axisIndex] > boxMaxCorner[axisIndex]) {
-                    return null; // outside slab, no hit
+        for (let axis = 0; axis < 3; axis++) {
+            if (Math.abs(rayDirection[axis]) < 1e-8) {
+                if (rayOrigin[axis] < boxMin[axis] || rayOrigin[axis] > boxMax[axis]) {
+                    return null;
                 }
                 continue;
             }
 
-            const inverseDirection = 1.0 / rayDirection[axisIndex];
-            let slabEntryT = (boxMinCorner[axisIndex] - rayOrigin[axisIndex]) * inverseDirection;
-            let slabExitT = (boxMaxCorner[axisIndex] - rayOrigin[axisIndex]) * inverseDirection;
+            const invDir = 1.0 / rayDirection[axis];
+            let slabEntry = (boxMin[axis] - rayOrigin[axis]) * invDir;
+            let slabExit  = (boxMax[axis] - rayOrigin[axis]) * invDir;
 
-            let entrySign = -1.0;
-            if (slabEntryT > slabExitT) {
-                [slabEntryT, slabExitT] = [slabExitT, slabEntryT];
-                entrySign = 1.0;
+            let sign = -1.0;
+            if (slabEntry > slabExit) {
+                [slabEntry, slabExit] = [slabExit, slabEntry];
+                sign = 1.0;
             }
 
-            if (slabEntryT > tEntryMax) {
-                tEntryMax = slabEntryT;
-                hitNormalAxis = axisIndex;
-                hitNormalSign = entrySign;
+            if (slabEntry > tEntry) {
+                tEntry = slabEntry;
+                normalAxis = axis;
+                normalSign = sign;
             }
-            tExitMin = Math.min(tExitMin, slabExitT);
+            tExit = Math.min(tExit, slabExit);
         }
 
-        if (tEntryMax > tExitMin || tExitMin < 0.001) return null;
-
-        const hitT = tEntryMax > 0.001 ? tEntryMax : tExitMin;
+        if (tEntry > tExit || tExit < 0.001) return null;
+        const hitT = tEntry > 0.001 ? tEntry : tExit;
         if (hitT < 0.001) return null;
 
         const hitNormal = new Float32Array([0, 0, 0]);
-        if (hitNormalAxis >= 0) {
-            hitNormal[hitNormalAxis] = hitNormalSign;
-        }
-
+        if (normalAxis >= 0) hitNormal[normalAxis] = normalSign;
         return { hitT, hitNormal };
     },
 
-    /**
-     * Ray-sphere intersection (from Project 1).
-     * Returns hitT or -1.
-     */
     intersectRaySphere(rayOrigin, rayDirection, sphereCenter, sphereRadius) {
-        const originToCenter = this.subtractVectors(rayOrigin, sphereCenter);
-        const quadraticA = this.dotProduct(rayDirection, rayDirection);
-        const quadraticB = 2.0 * this.dotProduct(originToCenter, rayDirection);
-        const quadraticC = this.dotProduct(originToCenter, originToCenter) - sphereRadius * sphereRadius;
-        const discriminantValue = quadraticB * quadraticB - 4.0 * quadraticA * quadraticC;
-
-        if (discriminantValue < 0) return -1.0;
-
-        const sqrtDiscriminant = Math.sqrt(discriminantValue);
-        const hitT1 = (-quadraticB - sqrtDiscriminant) / (2.0 * quadraticA);
-        const hitT2 = (-quadraticB + sqrtDiscriminant) / (2.0 * quadraticA);
-
-        if (hitT1 > 0.001) return hitT1;
-        if (hitT2 > 0.001) return hitT2;
+        const oc = this.subtractVectors(rayOrigin, sphereCenter);
+        const a = this.dotProduct(rayDirection, rayDirection);
+        const b = 2.0 * this.dotProduct(oc, rayDirection);
+        const c = this.dotProduct(oc, oc) - sphereRadius * sphereRadius;
+        const disc = b * b - 4.0 * a * c;
+        if (disc < 0) return -1.0;
+        const sq = Math.sqrt(disc);
+        const t1 = (-b - sq) / (2.0 * a);
+        const t2 = (-b + sq) / (2.0 * a);
+        if (t1 > 0.001) return t1;
+        if (t2 > 0.001) return t2;
         return -1.0;
     },
 
-    // -- Camera Ray Generation ---------------------------------------
-
-    /**
-     * Build a ray direction from pixel coordinates + camera orientation.
-     * Same approach as Project 1's camera model ported to real-time.
-     */
     buildCameraRayDirection(pixelX, pixelY, canvasWidth, canvasHeight, cameraYawAngle, cameraPitchAngle) {
-        const aspectRatioValue = canvasWidth / canvasHeight;
-        const fieldOfViewScale = Math.tan(Math.PI / 4.0); // 90 deg FOV
+        const aspect = canvasWidth / canvasHeight;
+        const fovScale = Math.tan(Math.PI / 4.0);
 
-        // Normalized device coordinates
-        const normalizedX = (2.0 * pixelX / canvasWidth - 1.0) * aspectRatioValue * fieldOfViewScale;
-        const normalizedY = (1.0 - 2.0 * pixelY / canvasHeight) * fieldOfViewScale;
+        const ndcX = (2.0 * pixelX / canvasWidth - 1.0) * aspect * fovScale;
+        const ndcY = (1.0 - 2.0 * pixelY / canvasHeight) * fovScale;
 
-        // Camera forward, right, up from yaw/pitch
         const cosYaw = Math.cos(cameraYawAngle);
         const sinYaw = Math.sin(cameraYawAngle);
         const cosPitch = Math.cos(cameraPitchAngle);
         const sinPitch = Math.sin(cameraPitchAngle);
 
-        const forwardVector = this.createVector(
+        const forward = this.createVector(
             cosPitch * sinYaw,
             sinPitch,
             cosPitch * cosYaw
         );
-        const worldUpVector = this.createVector(0, 1, 0);
-        const rightVector = this.normalizeVector(this.crossProduct(worldUpVector, forwardVector));
-        const cameraUpVector = this.crossProduct(forwardVector, rightVector);
+        const worldUp = this.createVector(0, 1, 0);
+        const right = this.normalizeVector(this.crossProduct(worldUp, forward));
+        const up = this.crossProduct(forward, right);
 
-        // Ray direction = forward + normalizedX * right + normalizedY * up
-        const rayDirection = this.normalizeVector(this.addVectors(
-            this.addVectors(
-                forwardVector,
-                this.scaleVector(rightVector, normalizedX)
-            ),
-            this.scaleVector(cameraUpVector, normalizedY)
+        return this.normalizeVector(this.addVectors(
+            this.addVectors(forward, this.scaleVector(right, ndcX)),
+            this.scaleVector(up, ndcY)
         ));
-
-        return rayDirection;
     }
 };

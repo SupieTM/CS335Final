@@ -7,7 +7,7 @@ out vec4 finalFragmentColor;
 uniform sampler2D sceneColorTexture;
 uniform float brightnessThreshold;
 
-// soft knee around the threshold so the extraction isn't a hard edge
+// soft knee around the threshold so extraction isn't a hard edge
 void main() {
     vec3 sceneColor = texture(sceneColorTexture, fragmentScreenCoord).rgb;
     float peakLuminance = max(max(sceneColor.r, sceneColor.g), sceneColor.b);
