@@ -10,7 +10,7 @@ export class LightingManager {
         ];
 
         this.flashIntensityValue = 0.0;
-        this.flashDecayRate = 0.55;
+        this.flashDecayPerSecond = 36.0;
         this.flashLightColor = new Float32Array([1.0, 0.95, 0.8]);
         this.isFlashActive = false;
     }
@@ -23,7 +23,7 @@ export class LightingManager {
     updateFlash(deltaTimeSeconds) {
         if (!this.isFlashActive) return;
 
-        this.flashIntensityValue *= this.flashDecayRate;
+        this.flashIntensityValue *= Math.exp(-this.flashDecayPerSecond * deltaTimeSeconds);
         if (this.flashIntensityValue < 0.01) {
             this.flashIntensityValue = 0.0;
             this.isFlashActive = false;
@@ -44,6 +44,11 @@ export class LightingManager {
             this.pointLightArray[lightIndex].positionVec3[1] = yPos;
             this.pointLightArray[lightIndex].positionVec3[2] = zPos;
         }
+    }
+
+    getLightPosition(lightIndex) {
+        if (lightIndex < 0 || lightIndex >= this.pointLightArray.length) return null;
+        return this.pointLightArray[lightIndex].positionVec3;
     }
 
     uploadLightUniforms(glContext, shaderProgram, cameraPosition) {

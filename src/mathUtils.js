@@ -140,9 +140,9 @@ export const MathUtils = {
         return -1.0;
     },
 
-    buildCameraRayDirection(pixelX, pixelY, canvasWidth, canvasHeight, cameraYawAngle, cameraPitchAngle) {
+    buildCameraRayDirection(pixelX, pixelY, canvasWidth, canvasHeight, cameraYawAngle, cameraPitchAngle, fieldOfViewRadians = Math.PI * 0.5) {
         const aspect = canvasWidth / canvasHeight;
-        const fovScale = Math.tan(Math.PI / 4.0);
+        const fovScale = Math.tan(fieldOfViewRadians / 2.0);
 
         const ndcX = (2.0 * pixelX / canvasWidth - 1.0) * aspect * fovScale;
         const ndcY = (1.0 - 2.0 * pixelY / canvasHeight) * fovScale;

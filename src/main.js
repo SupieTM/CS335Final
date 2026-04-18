@@ -27,7 +27,7 @@ const frameTimeSamples = new Float32Array(frameTimeSampleCount);
 let frameTimeSampleIndex = 0;
 let frameTimeSamplesFilled = 0;
 
-let currentMaxBounceCount = 12;
+let currentMaxBounceCount = 10;
 
 async function initializeApplication() {
     renderCanvas = document.getElementById('renderCanvas');
@@ -73,6 +73,7 @@ async function initializeApplication() {
     sceneGeometry = new SceneGeometry();
     lightingManager = new LightingManager();
     shatterManager = new ShatterManager();
+    cameraController.resetForLayout(sceneGeometry.currentLayoutName);
 
     bloomPostProcessor = new BloomPostProcessor(glContext, renderCanvas.width, renderCanvas.height);
     try {
@@ -226,7 +227,9 @@ function setupUserInterface() {
 
     const roomLayoutSelector = document.getElementById('roomLayoutSelector');
     roomLayoutSelector.addEventListener('change', (e) => {
-        sceneGeometry.switchLayout(e.target.value);
+        const layoutName = e.target.value;
+        sceneGeometry.switchLayout(layoutName);
+        cameraController.resetForLayout(layoutName);
         shatterManager.resetAllMirrors();
         sceneGeometry.resetBrokenBoxes();
         shardParticleSystem.clearAllParticles();
@@ -277,6 +280,45 @@ function setupUserInterface() {
         });
     }
 
+    const selectedLightSlider = document.getElementById('selectedLightSlider');
+    const selectedLightLabel  = document.getElementById('selectedLightLabel');
+    const lightPosXSlider = document.getElementById('lightPosXSlider');
+    const lightPosYSlider = document.getElementById('lightPosYSlider');
+    const lightPosZSlider = document.getElementById('lightPosZSlider');
+    const lightPosXLabel = document.getElementById('lightPosXLabel');
+    const lightPosYLabel = document.getElementById('lightPosYLabel');
+    const lightPosZLabel = document.getElementById('lightPosZLabel');
+
+    const syncPositionSliders = () => {
+        const idx = parseInt(selectedLightSlider.value);
+        const pos = lightingManager.getLightPosition(idx);
+        if (!pos) return;
+        lightPosXSlider.value = pos[0].toFixed(1);
+        lightPosYSlider.value = pos[1].toFixed(1);
+        lightPosZSlider.value = pos[2].toFixed(1);
+        lightPosXLabel.textContent = pos[0].toFixed(1);
+        lightPosYLabel.textContent = pos[1].toFixed(1);
+        lightPosZLabel.textContent = pos[2].toFixed(1);
+        selectedLightLabel.textContent = (idx + 1).toString();
+    };
+    syncPositionSliders();
+
+    selectedLightSlider.addEventListener('input', syncPositionSliders);
+
+    const applyLightPosition = () => {
+        const idx = parseInt(selectedLightSlider.value);
+        const x = parseFloat(lightPosXSlider.value);
+        const y = parseFloat(lightPosYSlider.value);
+        const z = parseFloat(lightPosZSlider.value);
+        lightingManager.setLightPosition(idx, x, y, z);
+        lightPosXLabel.textContent = x.toFixed(1);
+        lightPosYLabel.textContent = y.toFixed(1);
+        lightPosZLabel.textContent = z.toFixed(1);
+    };
+    lightPosXSlider.addEventListener('input', applyLightPosition);
+    lightPosYSlider.addEventListener('input', applyLightPosition);
+    lightPosZSlider.addEventListener('input', applyLightPosition);
+
     document.getElementById('resetMirrorsButton').addEventListener('click', (e) => {
         e.stopPropagation();
         shatterManager.resetAllMirrors();
@@ -305,6 +347,7 @@ function setupUserInterface() {
         }
         if (keyEvent.code === 'KeyR') {
             shatterManager.resetAllMirrors();
+            sceneGeometry.resetBrokenBoxes();
             shardParticleSystem.clearAllParticles();
         }
         if (keyEvent.code === 'KeyE' && cameraController.isPointerLocked) {
