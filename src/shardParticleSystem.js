@@ -1,16 +1,10 @@
 import { createShaderProgram, fetchShaderSource } from './shaderUtils.js';
 
-// fixed pool of 500 glass shards. each particle is a small triangle in world
-// space with its own position, velocity and full euler rotation. physics runs
-// at frame-rate-independent dt and is simple: gravity, floor bounce with
-// restitution, xz friction on contact, angular damping, life timer.
-
 export class ShardParticleSystem {
     constructor(glContext) {
         this.gl = glContext;
         this.maxParticleCount = 500;
 
-        // struct-of-arrays pools
         this.particlePositions = new Float32Array(this.maxParticleCount * 3);
         this.particleVelocities = new Float32Array(this.maxParticleCount * 3);
         this.particleRotations = new Float32Array(this.maxParticleCount * 3);
@@ -19,7 +13,6 @@ export class ShardParticleSystem {
         this.particleLives = new Float32Array(this.maxParticleCount);
         this.particleActive = new Uint8Array(this.maxParticleCount);
 
-        // 3 verts per particle, each (x, y, z, alpha) = 4 floats
         this.vertexFloatsPerVertex = 4;
         this.vertexData = new Float32Array(this.maxParticleCount * 3 * this.vertexFloatsPerVertex);
 
@@ -45,10 +38,8 @@ export class ShardParticleSystem {
         gl.bufferData(gl.ARRAY_BUFFER, this.vertexData.byteLength, gl.DYNAMIC_DRAW);
 
         const strideBytes = this.vertexFloatsPerVertex * 4;
-        // attribute 0: worldPosition vec3
         gl.enableVertexAttribArray(0);
         gl.vertexAttribPointer(0, 3, gl.FLOAT, false, strideBytes, 0);
-        // attribute 1: particleAlpha float
         gl.enableVertexAttribArray(1);
         gl.vertexAttribPointer(1, 1, gl.FLOAT, false, strideBytes, 12);
 
@@ -77,12 +68,11 @@ export class ShardParticleSystem {
             if (slotIdx < 0) break;
             const base = slotIdx * 3;
 
-            // sit just off the mirror surface so first-frame verts don't clip
+            // offset off the surface so first-frame verts don't clip through
             this.particlePositions[base + 0] = impactPoint[0] + mirrorNormal[0] * 0.03;
             this.particlePositions[base + 1] = impactPoint[1] + mirrorNormal[1] * 0.03;
             this.particlePositions[base + 2] = impactPoint[2] + mirrorNormal[2] * 0.03;
 
-            // outward velocity along the mirror normal plus a random spray cone
             const outwardStrength = 2.2 + Math.random() * 3.0;
             const sprayMagnitude = 1.4;
             this.particleVelocities[base + 0] = mirrorNormal[0] * outwardStrength + (Math.random() - 0.5) * sprayMagnitude;
@@ -148,7 +138,6 @@ export class ShardParticleSystem {
     }
 
     _rebuildVertexData() {
-        // equilateral triangle template, scaled per particle
         const triVert0X = 0.0,   triVert0Y = 0.866, triVert0Z = 0.0;
         const triVert1X = -0.75, triVert1Y = -0.433, triVert1Z = 0.0;
         const triVert2X = 0.75,  triVert2Y = -0.433, triVert2Z = 0.0;
@@ -166,7 +155,6 @@ export class ShardParticleSystem {
             const lifeRemaining = this.particleLives[slotIdx];
             const alphaValue = Math.min(1.0, lifeRemaining / 0.6) * 0.9;
 
-            // euler XYZ rotation matrix
             const rx = this.particleRotations[base + 0];
             const ry = this.particleRotations[base + 1];
             const rz = this.particleRotations[base + 2];
@@ -184,7 +172,6 @@ export class ShardParticleSystem {
             const m21 = sx * cy;
             const m22 = cx * cy;
 
-            // vert 0
             let lx = triVert0X * sizeValue, ly = triVert0Y * sizeValue, lz = triVert0Z * sizeValue;
             let writeIdx = (slotIdx * 3 + 0) * this.vertexFloatsPerVertex;
             this.vertexData[writeIdx + 0] = m00 * lx + m01 * ly + m02 * lz + posX;
@@ -192,7 +179,6 @@ export class ShardParticleSystem {
             this.vertexData[writeIdx + 2] = m20 * lx + m21 * ly + m22 * lz + posZ;
             this.vertexData[writeIdx + 3] = alphaValue;
 
-            // vert 1
             lx = triVert1X * sizeValue; ly = triVert1Y * sizeValue; lz = triVert1Z * sizeValue;
             writeIdx = (slotIdx * 3 + 1) * this.vertexFloatsPerVertex;
             this.vertexData[writeIdx + 0] = m00 * lx + m01 * ly + m02 * lz + posX;
@@ -200,7 +186,6 @@ export class ShardParticleSystem {
             this.vertexData[writeIdx + 2] = m20 * lx + m21 * ly + m22 * lz + posZ;
             this.vertexData[writeIdx + 3] = alphaValue;
 
-            // vert 2
             lx = triVert2X * sizeValue; ly = triVert2Y * sizeValue; lz = triVert2Z * sizeValue;
             writeIdx = (slotIdx * 3 + 2) * this.vertexFloatsPerVertex;
             this.vertexData[writeIdx + 0] = m00 * lx + m01 * ly + m02 * lz + posX;
@@ -225,7 +210,7 @@ export class ShardParticleSystem {
         gl.uniform1f(gl.getUniformLocation(this.shaderProgram, 'cameraFovRadians'), cameraController.fieldOfViewRadians);
         gl.uniform2f(gl.getUniformLocation(this.shaderProgram, 'canvasResolution'), canvasWidth, canvasHeight);
 
-        // additive blend so shards add bright silver into the HDR scene buffer
+        // additive blend so shards feed bright silver into the HDR buffer
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 

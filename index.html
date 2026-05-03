@@ -189,6 +189,38 @@
             font-family: 'Consolas', monospace;
         }
 
+        #doorPrompt {
+            position: fixed;
+            top: 58%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 40;
+            background: rgba(12, 10, 18, 0.78);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 6px;
+            padding: 7px 14px;
+            font-size: 12px;
+            letter-spacing: 1.5px;
+            color: rgba(255, 255, 255, 0.85);
+            font-family: 'Consolas', monospace;
+            text-transform: uppercase;
+            backdrop-filter: blur(4px);
+            transition: opacity 0.12s;
+        }
+        #doorPrompt.hidden { opacity: 0; }
+        #doorPrompt .doorPromptKey {
+            display: inline-block;
+            min-width: 18px;
+            text-align: center;
+            padding: 1px 6px;
+            background: rgba(255, 120, 158, 0.2);
+            border: 1px solid rgba(255, 120, 158, 0.6);
+            border-radius: 3px;
+            color: #ffb0c5;
+            margin-right: 8px;
+        }
+
         #errorDisplay {
             position: fixed;
             top: 50%; left: 50%;
@@ -209,6 +241,10 @@
     <div id="fpsDisplay">-- FPS</div>
     <div id="errorDisplay"></div>
 
+    <div id="doorPrompt" class="hidden">
+        <span class="doorPromptKey">E</span><span class="doorPromptLabel">open door</span>
+    </div>
+
     <div id="controlPanel">
         <h3>MIRROR ROOM</h3>
 
@@ -223,6 +259,7 @@
             <select id="roomLayoutSelector">
                 <option value="corridor">Corridor</option>
                 <option value="labyrinth">Labyrinth</option>
+                <option value="doors">Mirror Doors</option>
                 <option value="openRoom">Open Room</option>
                 <option value="angled">Hexagonal</option>
             </select>
@@ -264,6 +301,28 @@
             <input type="color" id="lightColor2" value="#3dff66">
         </div>
 
+        <div class="sectionLabel">Light Position</div>
+        <div class="controlRow">
+            <label>Edit Light</label>
+            <input type="range" id="selectedLightSlider" min="0" max="4" value="0">
+            <span class="valueLabel" id="selectedLightLabel">1</span>
+        </div>
+        <div class="controlRow">
+            <label>X</label>
+            <input type="range" id="lightPosXSlider" min="-6" max="6" step="0.1" value="-1.7">
+            <span class="valueLabel" id="lightPosXLabel">-1.7</span>
+        </div>
+        <div class="controlRow">
+            <label>Y</label>
+            <input type="range" id="lightPosYSlider" min="0.5" max="4.0" step="0.1" value="2.6">
+            <span class="valueLabel" id="lightPosYLabel">2.6</span>
+        </div>
+        <div class="controlRow">
+            <label>Z</label>
+            <input type="range" id="lightPosZSlider" min="-8" max="8" step="0.1" value="-6">
+            <span class="valueLabel" id="lightPosZLabel">-6.0</span>
+        </div>
+
         <button id="resetMirrorsButton">REPAIR MIRRORS</button>
     </div>
 
@@ -272,6 +331,7 @@
         <div><span class="keybindKey">Mouse</span> Look</div>
         <div><span class="keybindKey">Shift</span> Sprint</div>
         <div><span class="keybindKey">Click</span> Shatter mirror</div>
+        <div><span class="keybindKey">E</span> Open mirror door</div>
         <div><span class="keybindKey">F</span> Muzzle flash</div>
         <div><span class="keybindKey">R</span> Repair mirrors</div>
         <div><span class="keybindKey">Tab</span> Hide UI</div>

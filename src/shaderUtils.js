@@ -30,7 +30,6 @@ export function createShaderProgram(glContext, vertexShaderSource, fragmentShade
         throw new Error(`Shader program linking failed:\n${linkingLog}`);
     }
 
-    // Clean up individual shaders (attached to program now)
     glContext.deleteShader(vertexShader);
     glContext.deleteShader(fragmentShader);
 

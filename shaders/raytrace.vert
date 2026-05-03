@@ -1,5 +1,4 @@
 #version 300 es
-// fullscreen quad passthrough used by every render pass
 
 layout(location = 0) in vec2 vertexPosition;
 out vec2 fragmentScreenCoord;

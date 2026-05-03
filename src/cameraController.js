@@ -4,32 +4,27 @@ export class CameraController {
     constructor(canvasElement) {
         this.canvasElement = canvasElement;
 
-        // Camera state
-        this.cameraPosition = new Float32Array([0, 1.6, 0]); // eye height
+        this.cameraPosition = new Float32Array([0, 1.6, 0]);
         this.cameraYawAngle = 0.0;
         this.cameraPitchAngle = 0.0;
 
-        // Movement config
         this.movementSpeed = 3.0;
         this.sprintSpeedMultiplier = 1.8;
         this.mouseSensitivity = 0.002;
-        this.pitchClampRadians = 1.553; // ~89 deg
+        this.pitchClampRadians = 1.553;
 
-        // smooth stop/start instead of snapping
         this.currentVelocity = new Float32Array([0, 0, 0]);
         this.accelerationRate = 15.0;
         this.decelerationRate = 12.0;
 
-        // flush mouse deltas once per frame (fixes jitter)
+        // flush mouse deltas once per frame to fix jitter on high-refresh displays
         this.pendingMouseDeltaX = 0;
         this.pendingMouseDeltaY = 0;
 
-        // Input tracking
         this.pressedKeys = {};
         this.isPointerLocked = false;
         this.onPointerLockChangeCallback = null;
 
-        // fov in radians - 90 deg default
         this.fieldOfViewRadians = Math.PI * 0.5;
 
         this._setupInputListeners();
@@ -44,32 +39,22 @@ export class CameraController {
     }
 
     _setupInputListeners() {
-        // Keyboard
-        document.addEventListener('keydown', (keyEvent) => {
-            this.pressedKeys[keyEvent.code] = true;
-        });
-        document.addEventListener('keyup', (keyEvent) => {
-            this.pressedKeys[keyEvent.code] = false;
-        });
+        document.addEventListener('keydown', (e) => { this.pressedKeys[e.code] = true; });
+        document.addEventListener('keyup',   (e) => { this.pressedKeys[e.code] = false; });
 
-        // Pointer lock
         this.canvasElement.addEventListener('click', () => {
-            if (!this.isPointerLocked) {
-                this.canvasElement.requestPointerLock();
-            }
+            if (!this.isPointerLocked) this.canvasElement.requestPointerLock();
         });
 
         document.addEventListener('pointerlockchange', () => {
             this.isPointerLocked = (document.pointerLockElement === this.canvasElement);
-            if (this.onPointerLockChangeCallback) {
-                this.onPointerLockChangeCallback(this.isPointerLocked);
-            }
+            if (this.onPointerLockChangeCallback) this.onPointerLockChangeCallback(this.isPointerLocked);
         });
 
-        document.addEventListener('mousemove', (mouseEvent) => {
+        document.addEventListener('mousemove', (e) => {
             if (!this.isPointerLocked) return;
-            this.pendingMouseDeltaX += mouseEvent.movementX;
-            this.pendingMouseDeltaY += mouseEvent.movementY;
+            this.pendingMouseDeltaX += e.movementX;
+            this.pendingMouseDeltaY += e.movementY;
         });
     }
 
@@ -83,28 +68,23 @@ export class CameraController {
     }
 
     getForwardVector() {
-        const cosYaw = Math.cos(this.cameraYawAngle);
-        const sinYaw = Math.sin(this.cameraYawAngle);
-        const cosPitch = Math.cos(this.cameraPitchAngle);
-        const sinPitch = Math.sin(this.cameraPitchAngle);
-        return MathUtils.createVector(
-            cosPitch * sinYaw,
-            sinPitch,
-            cosPitch * cosYaw
-        );
+        const cy = Math.cos(this.cameraYawAngle);
+        const sy = Math.sin(this.cameraYawAngle);
+        const cp = Math.cos(this.cameraPitchAngle);
+        const sp = Math.sin(this.cameraPitchAngle);
+        return MathUtils.createVector(cp * sy, sp, cp * cy);
     }
 
     getHorizontalForwardVector() {
-        // Forward projected onto the xz plane (for walking)
-        const sinYaw = Math.sin(this.cameraYawAngle);
-        const cosYaw = Math.cos(this.cameraYawAngle);
-        return MathUtils.normalizeVector(MathUtils.createVector(sinYaw, 0, cosYaw));
+        const sy = Math.sin(this.cameraYawAngle);
+        const cy = Math.cos(this.cameraYawAngle);
+        return MathUtils.normalizeVector(MathUtils.createVector(sy, 0, cy));
     }
 
     getRightVector() {
-        const forwardVec = this.getForwardVector();
-        const worldUpVector = MathUtils.createVector(0, 1, 0);
-        return MathUtils.normalizeVector(MathUtils.crossProduct(worldUpVector, forwardVec));
+        const fwd = this.getForwardVector();
+        const worldUp = MathUtils.createVector(0, 1, 0);
+        return MathUtils.normalizeVector(MathUtils.crossProduct(worldUp, fwd));
     }
 
     updatePosition(deltaTimeSeconds, sceneGeometry = null) {
@@ -113,121 +93,116 @@ export class CameraController {
         const horizontalForward = this.getHorizontalForwardVector();
         const rightVector = this.getRightVector();
 
-        // normalize so diagonals aren't faster
-        let inputDirection = MathUtils.createVector(0, 0, 0);
-        if (this.pressedKeys['KeyW']) {
-            inputDirection = MathUtils.addVectors(inputDirection, horizontalForward);
-        }
-        if (this.pressedKeys['KeyS']) {
-            inputDirection = MathUtils.addVectors(inputDirection,
-                MathUtils.scaleVector(horizontalForward, -1));
-        }
-        if (this.pressedKeys['KeyD']) {
-            inputDirection = MathUtils.addVectors(inputDirection, rightVector);
-        }
-        if (this.pressedKeys['KeyA']) {
-            inputDirection = MathUtils.addVectors(inputDirection,
-                MathUtils.scaleVector(rightVector, -1));
-        }
+        let inputDir = MathUtils.createVector(0, 0, 0);
+        if (this.pressedKeys['KeyW']) inputDir = MathUtils.addVectors(inputDir, horizontalForward);
+        if (this.pressedKeys['KeyS']) inputDir = MathUtils.addVectors(inputDir, MathUtils.scaleVector(horizontalForward, -1));
+        if (this.pressedKeys['KeyD']) inputDir = MathUtils.addVectors(inputDir, rightVector);
+        if (this.pressedKeys['KeyA']) inputDir = MathUtils.addVectors(inputDir, MathUtils.scaleVector(rightVector, -1));
 
-        const inputMagnitude = MathUtils.vectorLength(inputDirection);
-        const isSprinting = !!this.pressedKeys['ShiftLeft'] || !!this.pressedKeys['ShiftRight'];
-        const targetSpeed = this.movementSpeed * (isSprinting ? this.sprintSpeedMultiplier : 1.0);
+        const inputMag = MathUtils.vectorLength(inputDir);
+        const sprinting = !!this.pressedKeys['ShiftLeft'] || !!this.pressedKeys['ShiftRight'];
+        const targetSpeed = this.movementSpeed * (sprinting ? this.sprintSpeedMultiplier : 1.0);
 
-        let targetVelocity;
-        if (inputMagnitude > 1e-5) {
-            targetVelocity = MathUtils.scaleVector(
-                MathUtils.scaleVector(inputDirection, 1.0 / inputMagnitude),
+        let targetVel;
+        if (inputMag > 1e-5) {
+            targetVel = MathUtils.scaleVector(
+                MathUtils.scaleVector(inputDir, 1.0 / inputMag),
                 targetSpeed
             );
         } else {
-            targetVelocity = MathUtils.createVector(0, 0, 0);
+            targetVel = MathUtils.createVector(0, 0, 0);
         }
 
-        const lerpRate = (inputMagnitude > 1e-5) ? this.accelerationRate : this.decelerationRate;
+        const lerpRate = (inputMag > 1e-5) ? this.accelerationRate : this.decelerationRate;
         const lerpFactor = Math.min(1.0, lerpRate * deltaTimeSeconds);
-        this.currentVelocity[0] += (targetVelocity[0] - this.currentVelocity[0]) * lerpFactor;
-        this.currentVelocity[1] += (targetVelocity[1] - this.currentVelocity[1]) * lerpFactor;
-        this.currentVelocity[2] += (targetVelocity[2] - this.currentVelocity[2]) * lerpFactor;
+        this.currentVelocity[0] += (targetVel[0] - this.currentVelocity[0]) * lerpFactor;
+        this.currentVelocity[1] += (targetVel[1] - this.currentVelocity[1]) * lerpFactor;
+        this.currentVelocity[2] += (targetVel[2] - this.currentVelocity[2]) * lerpFactor;
 
-        const movementDelta = MathUtils.scaleVector(this.currentVelocity, deltaTimeSeconds);
-        const candidatePosition = MathUtils.addVectors(this.cameraPosition, movementDelta);
+        const moveDelta = MathUtils.scaleVector(this.currentVelocity, deltaTimeSeconds);
+        const candidate = MathUtils.addVectors(this.cameraPosition, moveDelta);
 
-        // Simple wall collision - keep camera inside room bounds
         if (sceneGeometry) {
-            const clampedPosition = this._clampToRoomBounds(candidatePosition, sceneGeometry);
-            this.cameraPosition[0] = clampedPosition[0];
-            this.cameraPosition[1] = clampedPosition[1];
-            this.cameraPosition[2] = clampedPosition[2];
+            const clamped = this._clampToRoomBounds(candidate, sceneGeometry);
+            this.cameraPosition[0] = clamped[0];
+            this.cameraPosition[1] = clamped[1];
+            this.cameraPosition[2] = clamped[2];
         } else {
-            this.cameraPosition[0] = candidatePosition[0];
-            this.cameraPosition[1] = candidatePosition[1];
-            this.cameraPosition[2] = candidatePosition[2];
+            this.cameraPosition[0] = candidate[0];
+            this.cameraPosition[1] = candidate[1];
+            this.cameraPosition[2] = candidate[2];
         }
     }
 
     _clampToRoomBounds(candidatePosition, sceneGeometry) {
         const layout = sceneGeometry.getCurrentLayout();
-        const wallMargin = 0.3; // don't get too close to walls
+        const wallMargin = 0.3;
         const boxMargin = 0.25;
-        const clampedPosition = new Float32Array(candidatePosition);
+        const pos = new Float32Array(candidatePosition);
 
         for (const plane of layout.wallPlanes) {
-            const normalVec = new Float32Array(plane.normalVector);
-            const signedDistance = MathUtils.dotProduct(clampedPosition, normalVec) + plane.distanceFromOrigin;
-
-            if (signedDistance < wallMargin) {
-                // Push back along the normal
-                const pushBackAmount = wallMargin - signedDistance;
-                clampedPosition[0] += normalVec[0] * pushBackAmount;
-                clampedPosition[1] += normalVec[1] * pushBackAmount;
-                clampedPosition[2] += normalVec[2] * pushBackAmount;
+            const n = new Float32Array(plane.normalVector);
+            const signedDist = MathUtils.dotProduct(pos, n) + plane.distanceFromOrigin;
+            if (signedDist < wallMargin) {
+                const push = wallMargin - signedDist;
+                pos[0] += n[0] * push;
+                pos[1] += n[1] * push;
+                pos[2] += n[2] * push;
             }
         }
 
-        // 2D AABB push-out against unbroken boxes (panels span the full
-        // vertical range so we only need to test xz)
         for (const box of layout.boxObstacles) {
             if (box.isBroken) continue;
-            const dx = clampedPosition[0] - box.centerPosition[0];
-            const dz = clampedPosition[2] - box.centerPosition[2];
-            const overlapX = (box.halfExtentSize[0] + boxMargin) - Math.abs(dx);
-            const overlapZ = (box.halfExtentSize[2] + boxMargin) - Math.abs(dz);
-            if (overlapX > 0 && overlapZ > 0) {
-                if (overlapX < overlapZ) {
-                    clampedPosition[0] += overlapX * (dx >= 0 ? 1 : -1);
-                } else {
-                    clampedPosition[2] += overlapZ * (dz >= 0 ? 1 : -1);
-                }
+            const dx = pos[0] - box.centerPosition[0];
+            const dz = pos[2] - box.centerPosition[2];
+            const ox = (box.halfExtentSize[0] + boxMargin) - Math.abs(dx);
+            const oz = (box.halfExtentSize[2] + boxMargin) - Math.abs(dz);
+            if (ox > 0 && oz > 0) {
+                if (ox < oz) pos[0] += ox * (dx >= 0 ? 1 : -1);
+                else         pos[2] += oz * (dz >= 0 ? 1 : -1);
             }
         }
 
-        // Keep at eye height
-        clampedPosition[1] = 1.6;
-
-        return clampedPosition;
+        pos[1] = 1.6;
+        return pos;
     }
 
-    /**
-     * Cast a ray from screen coordinates for mouse picking.
-     * Same camera ray math as Project 1 but from a click point.
-     */
+    resetForLayout(layoutName) {
+        const spawnTable = {
+            corridor:  [0.0, 1.6,  0.0],
+            labyrinth: [0.0, 1.6, -7.0],
+            doors:     [0.0, 1.6, -8.5],
+            openRoom:  [0.0, 1.6,  3.0],
+            angled:    [0.0, 1.6,  0.0],
+        };
+        const spawn = spawnTable[layoutName] || [0.0, 1.6, 0.0];
+
+        this.cameraPosition[0] = spawn[0];
+        this.cameraPosition[1] = spawn[1];
+        this.cameraPosition[2] = spawn[2];
+
+        this.currentVelocity[0] = 0.0;
+        this.currentVelocity[1] = 0.0;
+        this.currentVelocity[2] = 0.0;
+    }
+
     castRayFromScreenPoint(clickX, clickY, canvasWidth, canvasHeight) {
-        const rayDirection = MathUtils.buildCameraRayDirection(
+        const dir = MathUtils.buildCameraRayDirection(
             clickX, clickY,
             canvasWidth, canvasHeight,
-            this.cameraYawAngle, this.cameraPitchAngle
+            this.cameraYawAngle, this.cameraPitchAngle,
+            this.fieldOfViewRadians
         );
         return {
             rayOrigin: new Float32Array(this.cameraPosition),
-            rayDirection: rayDirection,
+            rayDirection: dir,
         };
     }
 
     uploadCameraUniforms(glContext, shaderProgram) {
         glContext.uniform3fv(glContext.getUniformLocation(shaderProgram, 'cameraPosition'), this.cameraPosition);
-        glContext.uniform1f(glContext.getUniformLocation(shaderProgram, 'cameraYawAngle'), this.cameraYawAngle);
-        glContext.uniform1f(glContext.getUniformLocation(shaderProgram, 'cameraPitchAngle'), this.cameraPitchAngle);
-        glContext.uniform1f(glContext.getUniformLocation(shaderProgram, 'cameraFovRadians'), this.fieldOfViewRadians);
+        glContext.uniform1f (glContext.getUniformLocation(shaderProgram, 'cameraYawAngle'), this.cameraYawAngle);
+        glContext.uniform1f (glContext.getUniformLocation(shaderProgram, 'cameraPitchAngle'), this.cameraPitchAngle);
+        glContext.uniform1f (glContext.getUniformLocation(shaderProgram, 'cameraFovRadians'), this.fieldOfViewRadians);
     }
 }

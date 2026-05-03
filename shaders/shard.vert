@@ -1,9 +1,7 @@
 #version 300 es
 precision highp float;
 
-// reconstructs the same camera basis as the raytracer so the shards line up
-// perfectly with the world the rays are drawing. builds a perspective matrix
-// on the fly from the fov/aspect uniforms.
+// reuses the raytracer's camera basis so shards line up with what the rays draw
 
 layout(location = 0) in vec3 worldPosition;
 layout(location = 1) in float particleAlpha;

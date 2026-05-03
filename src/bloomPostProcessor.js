@@ -1,21 +1,10 @@
 import { createShaderProgram, fetchShaderSource } from './shaderUtils.js';
 
-// full FBO-based bloom pipeline:
-//   1. scene FBO (full res, RGBA16F) holds the raw HDR raytracer output
-//   2. bright-extract pass downsamples to half res, keeping only pixels above
-//      a brightness threshold
-//   3. N iterations of separable gaussian blur (horizontal then vertical)
-//      ping-ponging between two half-res FBOs
-//   4. composite pass reads scene + blurred bloom, applies ACES tonemap,
-//      vignette and gamma, draws to the default framebuffer
-
 export class BloomPostProcessor {
     constructor(glContext, canvasWidth, canvasHeight) {
         this.gl = glContext;
 
-        // RGBA16F is needed so HDR values above 1.0 survive into the bright-
-        // pass extraction. webgl2 requires enabling EXT_color_buffer_float to
-        // render to a half-float texture.
+        // RGBA16F needed so HDR values > 1.0 survive into the bright-pass
         const colorBufferFloatExt = glContext.getExtension('EXT_color_buffer_float');
         this.useFloatTextures = !!colorBufferFloatExt;
         if (!this.useFloatTextures) {
@@ -107,7 +96,7 @@ export class BloomPostProcessor {
         const gl = this.gl;
         gl.bindVertexArray(fullscreenQuadVAO);
 
-        // -- 1. bright-extract: scene -> bloomPing
+        // bright-extract: scene -> bloomPing
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.bloomPingFbo.framebufferObject);
         gl.viewport(0, 0, this.bloomPingFbo.fboWidth, this.bloomPingFbo.fboHeight);
         gl.useProgram(this.extractProgram);
@@ -117,13 +106,12 @@ export class BloomPostProcessor {
         gl.uniform1f(gl.getUniformLocation(this.extractProgram, 'brightnessThreshold'), this.brightnessThreshold);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-        // -- 2. separable gaussian blur, ping-ponging half-res fbos
+        // separable gaussian blur, ping-ponging between the two half-res fbos
         gl.useProgram(this.blurProgram);
         const blurSourceUniform = gl.getUniformLocation(this.blurProgram, 'bloomSourceTexture');
         const blurDirectionUniform = gl.getUniformLocation(this.blurProgram, 'blurDirection');
 
         for (let iteration = 0; iteration < this.blurIterationCount; iteration++) {
-            // horizontal pass: ping -> pong
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.bloomPongFbo.framebufferObject);
             gl.viewport(0, 0, this.bloomPongFbo.fboWidth, this.bloomPongFbo.fboHeight);
             gl.activeTexture(gl.TEXTURE0);
@@ -132,7 +120,6 @@ export class BloomPostProcessor {
             gl.uniform2f(blurDirectionUniform, 1.0, 0.0);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-            // vertical pass: pong -> ping
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.bloomPingFbo.framebufferObject);
             gl.viewport(0, 0, this.bloomPingFbo.fboWidth, this.bloomPingFbo.fboHeight);
             gl.bindTexture(gl.TEXTURE_2D, this.bloomPongFbo.colorTexture);
@@ -141,7 +128,7 @@ export class BloomPostProcessor {
             gl.drawArrays(gl.TRIANGLES, 0, 6);
         }
 
-        // -- 3. composite to the default framebuffer
+        // composite to default framebuffer
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, canvasWidth, canvasHeight);
         gl.useProgram(this.compositeProgram);

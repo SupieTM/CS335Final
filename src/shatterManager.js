@@ -1,7 +1,3 @@
-// tracks which mirrors have been shattered and holds the voronoi
-// seed cluster for the most recently hit mirror. the shader reads
-// these uniforms every frame.
-
 export class ShatterManager {
     constructor() {
         this.maxMirrorCount = 16;
@@ -19,9 +15,7 @@ export class ShatterManager {
         this.shatterFlags[planeIndex] = 1;
         this.lastHitPlaneIndex = planeIndex;
 
-        // 20 seeds clustered around the impact. sqrt radial spacing gives
-        // a dense core with sparser chunks farther out, which looks right
-        // for a bullet impact.
+        // sqrt radial spacing gives a dense core + sparser outer chunks
         const seedCount = 20;
         this.activeSeedCount = seedCount;
 
@@ -35,8 +29,7 @@ export class ShatterManager {
             this.seedPositions[seedIdx * 2 + 0] = hitUV[0] + offsetU;
             this.seedPositions[seedIdx * 2 + 1] = hitUV[1] + offsetV;
 
-            // perturb the base normal slightly so each cell reflects in
-            // a slightly different direction (the cracked-glass look)
+            // perturb normal per cell so each shard reflects differently
             const nx = baseNormal[0] + (Math.random() - 0.5) * 0.12;
             const ny = baseNormal[1] + (Math.random() - 0.5) * 0.12;
             const nz = baseNormal[2] + (Math.random() - 0.5) * 0.12;
