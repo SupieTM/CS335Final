@@ -27,7 +27,7 @@ const frameTimeSamples = new Float32Array(frameTimeSampleCount);
 let frameTimeSampleIndex = 0;
 let frameTimeSamplesFilled = 0;
 
-let currentMaxBounceCount = 10;
+let currentMaxBounceCount = 15;
 
 async function initializeApplication() {
     renderCanvas = document.getElementById('renderCanvas');
